@@ -76,7 +76,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).machine-learning == false && !github.event.pull_request.head.repo.fork && !startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.base_ref, 'release/') }}
+    if: ${{ fromJSON(needs.pre-job.outputs.should_run).machine-learning == false && !github.event.pull_request.head.repo.fork && github.repository == 'immich-app/immich' && !startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.base_ref, 'release/') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -130,7 +130,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).server == false && !github.event.pull_request.head.repo.fork && !startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.base_ref, 'release/') }}
+    if: ${{ fromJSON(needs.pre-job.outputs.should_run).server == false && !github.event.pull_request.head.repo.fork && github.repository == 'immich-app/immich' && !startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.base_ref, 'release/') }}
     runs-on: ubuntu-latest
     steps:
       - name: Login to GitHub Container Registry
