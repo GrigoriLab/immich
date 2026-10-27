@@ -249,16 +249,36 @@ export class PluginRepository {
 
     const { pool, label } = item;
 
+    let plugin: ExtismPlugin | undefined;
     try {
-      const plugin = await pool.acquire();
-      try {
-        const result = await plugin.call(methodName, JSON.stringify(input), context);
-        return (result ? result.json() : result) as T;
-      } finally {
-        await pool.release(plugin);
-      }
+      plugin = await pool.acquire();
+      const result = await plugin.call(methodName, JSON.stringify(input), context);
+      await this.recycle(pool, plugin);
+      return (result ? result.json() : result) as T;
     } catch (error: Error | any) {
+      // an instance whose call failed (e.g. "memory access out of bounds") stays broken: never return it to the pool
+      if (plugin) {
+        await pool.destroy(plugin).catch(() => {});
+      }
       throw new Error(`Plugin method call failed: ${label}#${methodName}`, { cause: error });
+    }
+  }
+
+  /**
+   * Returns a plugin instance to the pool after a successful call.
+   * In worker mode the Extism SDK does not reset plugin memory between calls (foreground mode does it on every call),
+   * so memory grows with every call until the plugin crashes with "memory access out of bounds".
+   * Resetting after each call keeps the instance healthy; if that is not possible, the instance is discarded.
+   */
+  private async recycle(pool: Pool<ExtismPlugin>, plugin: ExtismPlugin) {
+    try {
+      const wasReset = await plugin.reset();
+      if (!wasReset) {
+        throw new Error('plugin still active, cannot reset');
+      }
+      await pool.release(plugin);
+    } catch {
+      await pool.destroy(plugin).catch(() => {});
     }
   }
 }
